@@ -8,9 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const galleryContent = document.getElementById('gallery-content');
     const galleryCounter = document.getElementById('gallery-counter');
     const connectionStatus = document.getElementById('connection-status');
+    const galleryToggle = document.getElementById('gallery-toggle');
+    const rotationTimeInput = document.getElementById('rotation-time');
     
     // Get APP_PATH from config
-    const APP_PATH = window.APP_PATH || 'pizarraia';
+    const APP_PATH = window.APP_PATH || 'masterprompt';
     
     // Socket connection
     const socketConfig = config.getSocketConfig();
@@ -22,7 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPromptIndex = -1;
     let isTyping = false;
     let typingTimer;
-    const TYPING_DELAY = 500; // ms delay after typing stops
+    let rotationTimer;
+    let isGalleryMode = false;
+    let rotationTime = parseInt(rotationTimeInput.value) || 5; // seconds
     
     // Connect to socket
     socket.on('connect', () => {
@@ -34,49 +38,54 @@ document.addEventListener('DOMContentLoaded', () => {
         loadPrompts();
     });
     
+    // Socket events
     socket.on('disconnect', () => {
         connectionStatus.textContent = 'Desconectado';
         connectionStatus.classList.remove('connected');
         console.log('Disconnected from server');
     });
     
-    // Listen for text updates from other clients
     socket.on('text-update', (data) => {
-        if (data.text !== promptEditor.value) {
+        if (!isGalleryMode && data.text !== promptEditor.value) {
             promptEditor.value = data.text;
         }
     });
     
-    // Listen for prompt load requests
     socket.on('load-prompt', (data) => {
-        promptEditor.value = data.content;
+        if (!isGalleryMode && data.text !== promptEditor.value) {
+            promptEditor.value = data.text;
+        }
     });
     
-    // Listen for new prompts added by other clients
-    socket.on('new-prompt', (prompt) => {
-        prompts.unshift(prompt);
-        updateGallery();
+    socket.on('new-prompt', () => {
+        loadPrompts();
+    });
+    
+    socket.on('gallery-mode', (data) => {
+        setGalleryMode(data.isActive, data.promptIndex);
+    });
+    
+    socket.on('rotate-prompt', (data) => {
+        if (isGalleryMode && data.promptIndex !== currentPromptIndex) {
+            currentPromptIndex = data.promptIndex;
+            displayPrompt(currentPromptIndex);
+        }
     });
     
     // Event listeners
     promptEditor.addEventListener('input', () => {
-        // Clear any existing timer
-        clearTimeout(typingTimer);
+        if (isGalleryMode) return; // Don't allow editing in gallery mode
         
-        // Set typing flag
-        isTyping = true;
-        
-        // Emit text update after typing stops
-        typingTimer = setTimeout(() => {
-            isTyping = false;
-            socket.emit('text-update', { text: promptEditor.value });
-        }, TYPING_DELAY);
+        // Emit text update for every keystroke for real-time sync
+        socket.emit('text-update', { text: promptEditor.value });
     });
     
     saveButton.addEventListener('click', savePrompt);
     loadButton.addEventListener('click', loadSelectedPrompt);
     prevButton.addEventListener('click', showPreviousPrompt);
     nextButton.addEventListener('click', showNextPrompt);
+    galleryToggle.addEventListener('click', toggleGalleryMode);
+    rotationTimeInput.addEventListener('change', updateRotationTime);
     
     // Functions
     async function loadPrompts() {
@@ -98,8 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = promptEditor.value.trim();
         
         if (!content) {
-            alert('El prompt no puede estar vacío');
-            return;
+            return; // Don't save empty prompts
         }
         
         try {
@@ -116,12 +124,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             const newPrompt = await response.json();
-            prompts.unshift(newPrompt);
-            updateGallery();
-            alert('Prompt guardado correctamente');
+            
+            // Check for duplicates before adding to the array
+            const isDuplicate = prompts.some(prompt => prompt._id === newPrompt._id);
+            if (!isDuplicate) {
+                prompts.unshift(newPrompt);
+                updateGallery();
+                // No alert - removed as requested
+            }
         } catch (error) {
             console.error('Error saving prompt:', error);
-            alert('Error al guardar el prompt');
+            // No alert for errors either
         }
     }
     
@@ -206,5 +219,75 @@ document.addEventListener('DOMContentLoaded', () => {
             return text;
         }
         return text.substring(0, maxLength) + '...';
+    }
+    
+    // Gallery mode functions
+    function toggleGalleryMode() {
+        isGalleryMode = !isGalleryMode;
+        
+        // Update UI
+        galleryToggle.textContent = isGalleryMode ? 'ON' : 'OFF';
+        galleryToggle.classList.toggle('active', isGalleryMode);
+        
+        // Make text editor readonly in gallery mode
+        promptEditor.readOnly = isGalleryMode;
+        
+        // Notify other clients
+        socket.emit('gallery-mode', { isActive: isGalleryMode, promptIndex: currentPromptIndex });
+        
+        if (isGalleryMode) {
+            // Start auto-rotation if we have prompts
+            if (prompts.length > 0) {
+                if (currentPromptIndex === -1) {
+                    currentPromptIndex = 0;
+                }
+                startAutoRotation();
+            }
+        } else {
+            // Stop auto-rotation
+            stopAutoRotation();
+        }
+    }
+    
+    function updateRotationTime() {
+        rotationTime = parseInt(rotationTimeInput.value) || 5;
+        
+        // Restart rotation if gallery mode is active
+        if (isGalleryMode) {
+            stopAutoRotation();
+            startAutoRotation();
+        }
+    }
+    
+    function startAutoRotation() {
+        // Clear any existing timer
+        stopAutoRotation();
+        
+        // Start new timer
+        rotationTimer = setInterval(() => {
+            if (prompts.length > 0) {
+                // Move to next prompt or back to first
+                currentPromptIndex = (currentPromptIndex + 1) % prompts.length;
+                displayPrompt(currentPromptIndex);
+                
+                // Notify other clients
+                socket.emit('rotate-prompt', { promptIndex: currentPromptIndex });
+            }
+        }, rotationTime * 1000);
+    }
+    
+    function stopAutoRotation() {
+        if (rotationTimer) {
+            clearInterval(rotationTimer);
+            rotationTimer = null;
+        }
+    }
+    
+    function displayPrompt(index) {
+        if (index >= 0 && index < prompts.length) {
+            // Update UI
+            promptEditor.value = prompts[index].content;
+            updateGallery();
+        }
     }
 });

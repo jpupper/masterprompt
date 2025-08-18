@@ -102,6 +102,47 @@ button:disabled {
     color: #2ecc71;
 }
 
+.gallery-mode-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toggle-button {
+    padding: 8px 15px;
+    border-radius: 20px;
+    background-color: #e74c3c;
+    color: white;
+    transition: background-color 0.3s;
+}
+
+.toggle-button.active {
+    background-color: #2ecc71;
+}
+
+.time-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.time-selector input {
+    width: 60px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
 .gallery-controls {
     display: flex;
     justify-content: space-between;
@@ -159,11 +200,67 @@ button:disabled {
 }
 
 @media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .container {
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+    
     .main-section {
         flex-direction: column;
     }
     
     .editor-container, .gallery-container {
         width: 100%;
+        padding: 15px;
+        min-width: auto;
+    }
+    
+    #prompt-editor {
+        height: 200px;
+        font-size: 16px;
+    }
+    
+    .button-group {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    button {
+        padding: 12px 15px;
+        font-size: 16px;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    .connection-status {
+        width: 100%;
+        text-align: center;
+        margin-top: 10px;
+    }
+    
+    .gallery-controls {
+        flex-wrap: wrap;
+    }
+    
+    .gallery-controls button {
+        flex: 1;
+    }
+    
+    #gallery-counter {
+        width: 100%;
+        text-align: center;
+        margin: 10px 0;
+    }
+    
+    .prompt-item {
+        padding: 15px 10px;
     }
 }

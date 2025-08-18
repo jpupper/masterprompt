@@ -1,4 +1,4 @@
-const APP_PATH = 'pizarraia';  // Variable global para el nombre de la aplicación
+const APP_PATH = 'masterprompt';  // Variable global para el nombre de la aplicación
 const PORT = 3451;  // Variable global para el puerto
 
 // Make APP_PATH available globally

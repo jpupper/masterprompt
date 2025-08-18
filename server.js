@@ -83,16 +83,28 @@ const io = socketIo(server, {
 io.on('connection', (socket) => {
   console.log('Cliente conectado: ' + socket.id);
   
-  // Handle text synchronization
+  // Handle text synchronization - real-time for every keystroke
   socket.on('text-update', (data) => {
     socket.broadcast.emit('text-update', data);
-    console.log('Text updated:', data);
+    console.log('Text updated');
   });
   
   // Handle prompt selection from gallery
   socket.on('select-prompt', (data) => {
     io.emit('load-prompt', data);
-    console.log('Prompt selected:', data);
+    console.log('Prompt selected:', data._id);
+  });
+
+  // Handle gallery mode toggle
+  socket.on('gallery-mode', (data) => {
+    socket.broadcast.emit('gallery-mode', data);
+    console.log('Gallery mode changed:', data.isActive ? 'ON' : 'OFF');
+  });
+  
+  // Handle prompt rotation in gallery mode
+  socket.on('rotate-prompt', (data) => {
+    socket.broadcast.emit('rotate-prompt', data);
+    console.log('Rotating to prompt index:', data.promptIndex);
   });
 
   // Manejar la desconexión del cliente
