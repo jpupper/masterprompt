@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Sincronización de Prompts</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Sistema de Sincronización de Prompts</h1>
+        
+        <div class="main-section">
+            <div class="editor-container">
+                <h2>Editor de Prompts</h2>
+                <textarea id="prompt-editor" placeholder="Escribe tu prompt aquí..."></textarea>
+                <div class="button-group">
+                    <button id="save-button">Guardar Prompt</button>
+                    <div class="connection-status">
+                        Estado: <span id="connection-status">Desconectado</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-container">
+                <h2>Galería de Prompts</h2>
+                <div class="gallery-controls">
+                    <button id="prev-button">Anterior</button>
+                    <span id="gallery-counter">0/0</span>
+                    <button id="next-button">Siguiente</button>
+                </div>
+                <div id="gallery-content">
+                    <p class="empty-gallery">No hay prompts guardados</p>
+                </div>
+                <button id="load-button" disabled>Cargar Prompt Seleccionado</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script>
+        // Make APP_PATH available globally
+        window.APP_PATH = 'pizarraia';
+    </script>
+    <script src="/pizarraia/socket.io/socket.io.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
