@@ -8,7 +8,7 @@ const cors = require('cors');
 
 const hostname = '0.0.0.0';
 const port = 3451;
-const APP_PATH = 'pizarraia';  // Variable global
+const APP_PATH = 'masterprompt';  // Variable global
 
 // Create Express app
 const app = express();
