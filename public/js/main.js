@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const galleryCounter = document.getElementById('gallery-counter');
     const connectionStatus = document.getElementById('connection-status');
     const galleryToggle = document.getElementById('gallery-toggle');
+    const syncToggle = document.getElementById('sync-toggle');
     const rotationTimeInput = document.getElementById('rotation-time');
     
     // Get APP_PATH from config
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let typingTimer;
     let rotationTimer;
     let isGalleryMode = false;
+    let isSyncMode = true; // Por defecto, la sincronización está activada
     let rotationTime = parseInt(rotationTimeInput.value) || 5; // seconds
     
     // Connect to socket
@@ -66,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     socket.on('rotate-prompt', (data) => {
-        if (isGalleryMode && data.promptIndex !== currentPromptIndex) {
+        if (isGalleryMode && isSyncMode && data.promptIndex !== currentPromptIndex) {
             currentPromptIndex = data.promptIndex;
             displayPrompt(currentPromptIndex);
         }
@@ -85,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     prevButton.addEventListener('click', showPreviousPrompt);
     nextButton.addEventListener('click', showNextPrompt);
     galleryToggle.addEventListener('click', toggleGalleryMode);
+    syncToggle.addEventListener('click', toggleSyncMode);
     rotationTimeInput.addEventListener('change', updateRotationTime);
     
     // Functions
@@ -233,7 +236,9 @@ document.addEventListener('DOMContentLoaded', () => {
         promptEditor.readOnly = isGalleryMode;
         
         // Notify other clients
-        socket.emit('gallery-mode', { isActive: isGalleryMode, promptIndex: currentPromptIndex });
+        if (isSyncMode) {
+            socket.emit('gallery-mode', { isActive: isGalleryMode, promptIndex: currentPromptIndex });
+        }
         
         if (isGalleryMode) {
             // Start auto-rotation if we have prompts
@@ -246,6 +251,20 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Stop auto-rotation
             stopAutoRotation();
+        }
+    }
+    
+    // Sync mode function
+    function toggleSyncMode() {
+        isSyncMode = !isSyncMode;
+        
+        // Update UI
+        syncToggle.textContent = isSyncMode ? 'ON' : 'OFF';
+        syncToggle.classList.toggle('active', isSyncMode);
+        
+        // If we're in gallery mode and sync was just turned on, notify others of our current position
+        if (isGalleryMode && isSyncMode && currentPromptIndex >= 0) {
+            socket.emit('rotate-prompt', { promptIndex: currentPromptIndex });
         }
     }
     
@@ -270,8 +289,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentPromptIndex = (currentPromptIndex + 1) % prompts.length;
                 displayPrompt(currentPromptIndex);
                 
-                // Notify other clients
-                socket.emit('rotate-prompt', { promptIndex: currentPromptIndex });
+                // Notify other clients only if sync mode is on
+                if (isSyncMode) {
+                    socket.emit('rotate-prompt', { promptIndex: currentPromptIndex });
+                }
             }
         }, rotationTime * 1000);
     }
