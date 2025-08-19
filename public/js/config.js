@@ -13,14 +13,17 @@ const config = {
       return {
         url: `http://localhost:${PORT}`,
         options: {
-          path: `/${APP_PATH}/socket.io`
+          path: `/${APP_PATH}/socket.io`,
+          transports: ['websocket', 'polling']
         }
       };
     } else {
+      // Configuración para VPS
       return {
-        url: 'https://vps-4455523-x.dattaweb.com',
+        url: window.location.origin,
         options: {
-          path: `/${APP_PATH}/socket.io`
+          path: `/${APP_PATH}/socket.io`,
+          transports: ['websocket', 'polling']
         }
       };
     }

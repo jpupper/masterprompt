@@ -20,6 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Socket config:', socketConfig);
     const socket = io(socketConfig.url, socketConfig.options);
     
+    // Verificar conexión
+    socket.on('connect_error', (error) => {
+        console.error('Error de conexión:', error);
+        connectionStatus.textContent = 'Error de conexión';
+        connectionStatus.classList.remove('connected');
+    });
+    
     // Variables
     let prompts = [];
     let currentPromptIndex = -1;
@@ -144,35 +151,56 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateGallery() {
         if (prompts.length === 0) {
             galleryContent.innerHTML = '<p class="empty-gallery">No hay prompts guardados</p>';
-            galleryCounter.textContent = '0/0';
-            loadButton.disabled = true;
-            prevButton.disabled = true;
-            nextButton.disabled = true;
             return;
         }
-        
         galleryContent.innerHTML = '';
         
         prompts.forEach((prompt, index) => {
-            const promptItem = document.createElement('div');
-            promptItem.classList.add('prompt-item');
+            const promptElement = document.createElement('div');
+            promptElement.className = 'prompt-item';
             if (index === currentPromptIndex) {
-                promptItem.classList.add('active');
+                promptElement.classList.add('active');
             }
             
-            const date = new Date(prompt.createdAt);
-            const formattedDate = date.toLocaleString();
+            // Crear contenedor para el prompt y botón de borrar
+            const promptContainer = document.createElement('div');
+            promptContainer.className = 'prompt-container';
             
-            promptItem.innerHTML = `
-                <div class="prompt-content">${truncateText(prompt.content, 50)}</div>
-                <div class="prompt-date">${formattedDate}</div>
-            `;
+            // Truncate text for display
+            const truncatedText = prompt.content.length > 50 ? 
+                prompt.content.substring(0, 50) + '...' : 
+                prompt.content;
             
-            promptItem.addEventListener('click', () => {
-                selectPrompt(index);
+            // Texto del prompt
+            const promptText = document.createElement('div');
+            promptText.className = 'prompt-text';
+            promptText.textContent = truncatedText;
+            promptText.dataset.index = index;
+            
+            promptText.addEventListener('click', () => {
+                currentPromptIndex = index;
+                displayPrompt(currentPromptIndex);
+                loadSelectedPrompt();
             });
             
-            galleryContent.appendChild(promptItem);
+            // Botón de borrar
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-button';
+            deleteButton.textContent = 'X';
+            deleteButton.dataset.id = prompt._id;
+            
+            // Evento para borrar sin confirmación
+            deleteButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Evitar que se active el click del prompt
+                deletePrompt(prompt._id, index);
+            });
+            
+            // Agregar elementos al contenedor
+            promptContainer.appendChild(promptText);
+            promptContainer.appendChild(deleteButton);
+            promptElement.appendChild(promptContainer);
+            
+            galleryContent.appendChild(promptElement);
         });
         
         updateCounter();
@@ -196,16 +224,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function showPreviousPrompt() {
-        if (currentPromptIndex > 0) {
-            currentPromptIndex--;
-            updateGallery();
+        if (prompts.length > 0) {
+            // Move to previous prompt or to last if at beginning
+            currentPromptIndex = currentPromptIndex <= 0 ? prompts.length - 1 : currentPromptIndex - 1;
+            displayPrompt(currentPromptIndex);
+            
+            // Notify other clients if sync mode is on
+            if (isSyncMode) {
+                const currentPrompt = prompts[currentPromptIndex];
+                socket.emit('rotate-prompt', { 
+                    promptIndex: currentPromptIndex,
+                    promptText: currentPrompt.content,
+                    promptId: currentPrompt._id
+                });
+            }
         }
     }
     
     function showNextPrompt() {
-        if (currentPromptIndex < prompts.length - 1) {
-            currentPromptIndex++;
-            updateGallery();
+        if (prompts.length > 0) {
+            // Move to next prompt or back to first
+            currentPromptIndex = (currentPromptIndex + 1) % prompts.length;
+            displayPrompt(currentPromptIndex);
+            
+            // Notify other clients if sync mode is on
+            if (isSyncMode) {
+                const currentPrompt = prompts[currentPromptIndex];
+                socket.emit('rotate-prompt', { 
+                    promptIndex: currentPromptIndex,
+                    promptText: currentPrompt.content,
+                    promptId: currentPrompt._id
+                });
+            }
         }
     }
     
@@ -291,7 +341,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Notify other clients only if sync mode is on
                 if (isSyncMode) {
-                    socket.emit('rotate-prompt', { promptIndex: currentPromptIndex });
+                    const currentPrompt = prompts[currentPromptIndex];
+                    socket.emit('rotate-prompt', { 
+                        promptIndex: currentPromptIndex,
+                        promptText: currentPrompt.content,
+                        promptId: currentPrompt._id
+                    });
                 }
             }
         }, rotationTime * 1000);
@@ -310,5 +365,39 @@ document.addEventListener('DOMContentLoaded', () => {
             promptEditor.value = prompts[index].content;
             updateGallery();
         }
+    }
+    
+    // Función para borrar un prompt
+    function deletePrompt(promptId, index) {
+        // Llamar a la API para borrar el prompt
+        fetch(`/${APP_PATH}/api/prompts/${promptId}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                // Eliminar el prompt del array local
+                prompts.splice(index, 1);
+                
+                // Ajustar el índice actual si es necesario
+                if (currentPromptIndex >= prompts.length) {
+                    currentPromptIndex = prompts.length - 1;
+                    if (currentPromptIndex < 0) currentPromptIndex = 0;
+                }
+                
+                // Actualizar la galería
+                updateGallery();
+                
+                // Si hay prompts, mostrar el actual
+                if (prompts.length > 0) {
+                    displayPrompt(currentPromptIndex);
+                } else {
+                    // Si no hay prompts, limpiar el editor
+                    promptEditor.value = '';
+                }
+            } else {
+                console.error('Error al borrar el prompt');
+            }
+        })
+        .catch(error => console.error('Error:', error));
     }
 });
