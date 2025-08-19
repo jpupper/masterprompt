@@ -137,9 +137,8 @@ io.on('connection', (socket) => {
   
   // Handle text synchronization - real-time for every keystroke
   socket.on('text-update', (data) => {
-    const text = data.text || '';
-    socket.broadcast.emit('text-update', text);
-    console.log('Text updated:', text);
+    socket.broadcast.emit('text-update', data);
+    console.log('Text updated:', data);
   });
   
   // Handle prompt selection from gallery

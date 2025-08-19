@@ -1,8 +1,12 @@
 import socketio
 import time
+from pythonosc import udp_client
 
 # Crear el cliente Socket.IO
 sio = socketio.Client()
+
+# Crear cliente OSC para enviar a TouchDesigner en puerto 4800
+osc_client = udp_client.SimpleUDPClient("127.0.0.1", 4800)
 
 # URL del servidor
 #SERVER_URL = 'http://localhost:3451'
@@ -24,28 +28,35 @@ def on_new_prompt(data):
     print(f'ID: {data.get("_id")}')
     print(f'Contenido: {data.get("content")}')
     print(f'Fecha: {data.get("createdAt")}')
+    
+    # Enviar por OSC - siempre /mensaje con el contenido
+    osc_client.send_message("/mensaje", data.get("content", ""))
 
 @sio.on('text-update')
-def on_text_update(text):
+def on_text_update(data):
     print('\n=== Actualización de Texto ===')
-    print(text)
+    print(data)
+    osc_client.send_message("/mensaje", data.get("text", ""))
 
 @sio.on('load-prompt')
 def on_load_prompt(data):
     print('\n=== Prompt Seleccionado ===')
     print(f'ID: {data.get("_id")}')
     print(f'Contenido: {data.get("content")}')
+    osc_client.send_message("/mensaje", data.get("content", ""))
 
 @sio.on('prompt-deleted')
 def on_prompt_deleted(data):
     print('\n=== Prompt Eliminado ===')
     print(f'ID: {data.get("id")}')
+    osc_client.send_message("/mensaje", "")
 
 @sio.on('rotate-prompt')
 def on_rotate_prompt(data):
     print('\n=== Rotación de Prompt ===')
     print(f'Índice: {data.get("promptIndex")}')
     print(f'Texto: {data.get("promptText")}')
+    osc_client.send_message("/mensaje", data.get("promptText", ""))
 
 def main():
     try:
