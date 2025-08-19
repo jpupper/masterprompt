@@ -43,8 +43,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from the public directory
-app.use(express.static(path.join(__dirname, 'public')));
-
+app.use('/masterprompt', express.static(path.join(__dirname, 'public')));
 
 const Prompt = mongoose.model('Prompt', promptSchema);
 
@@ -121,12 +120,16 @@ const server = http.createServer(app);
 
 // Adjuntar socket.io al servidor HTTP
 const io = socketIo(server, {
-  path: `/${APP_PATH}/socket.io`,  // Configuración específica para la aplicación
+  path: `/${APP_PATH}/socket.io`,
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials: true
   },
-  allowEIO3: true // Permitir compatibilidad con versiones anteriores
+  allowEIO3: true,
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 io.on('connection', (socket) => {

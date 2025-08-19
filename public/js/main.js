@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const rotationTimeInput = document.getElementById('rotation-time');
     
     // Get APP_PATH from config
-    const APP_PATH = window.APP_PATH || 'masterprompt';
+    const APP_PATH = 'masterprompt';
     
     // Socket connection
     const socketConfig = config.getSocketConfig();
@@ -275,8 +275,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Gallery mode functions
-    function toggleGalleryMode() {
-        isGalleryMode = !isGalleryMode;
+    function setGalleryMode(isActive, promptIdx) {
+        isGalleryMode = isActive;
         
         // Update UI
         galleryToggle.textContent = isGalleryMode ? 'ON' : 'OFF';
@@ -285,9 +285,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Make text editor readonly in gallery mode
         promptEditor.readOnly = isGalleryMode;
         
-        // Notify other clients
-        if (isSyncMode) {
-            socket.emit('gallery-mode', { isActive: isGalleryMode, promptIndex: currentPromptIndex });
+        // Update prompt index if provided
+        if (promptIdx !== undefined && promptIdx >= 0 && promptIdx < prompts.length) {
+            currentPromptIndex = promptIdx;
+            displayPrompt(currentPromptIndex);
         }
         
         if (isGalleryMode) {
@@ -301,6 +302,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Stop auto-rotation
             stopAutoRotation();
+        }
+    }
+    
+    // Toggle gallery mode function
+    function toggleGalleryMode() {
+        setGalleryMode(!isGalleryMode, currentPromptIndex);
+        
+        // Notify other clients
+        if (isSyncMode) {
+            socket.emit('gallery-mode', { isActive: isGalleryMode, promptIndex: currentPromptIndex });
         }
     }
     

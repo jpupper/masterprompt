@@ -9,23 +9,12 @@ const config = {
     const isLocal = window.location.hostname === 'localhost' || 
                     window.location.hostname === '127.0.0.1';
     
-    if (isLocal) {
-      return {
-        url: `http://localhost:${PORT}`,
-        options: {
-          path: `/${APP_PATH}/socket.io`,
-          transports: ['websocket', 'polling']
-        }
-      };
-    } else {
-      // Configuración para VPS
-      return {
-        url: window.location.origin,
-        options: {
-          path: `/${APP_PATH}/socket.io`,
-          transports: ['websocket', 'polling']
-        }
-      };
+    return {
+      url: isLocal ? `http://localhost:${PORT}` : window.location.origin,
+      options: {
+        path: '/masterprompt/socket.io',
+        transports: ['websocket', 'polling']
+      }
     }
   }
 };
