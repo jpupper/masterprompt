@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isGalleryMode) return; // Don't allow editing in gallery mode
         
         // Emit text update for every keystroke for real-time sync
-        socket.emit('text-update', { text: promptEditor.value });
+        socket.emit('text-update', promptEditor.value);
     });
     
     saveButton.addEventListener('click', savePrompt);

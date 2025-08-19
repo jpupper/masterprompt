@@ -137,17 +137,9 @@ io.on('connection', (socket) => {
   
   // Handle text synchronization - real-time for every keystroke
   socket.on('text-update', (data) => {
-    socket.broadcast.emit('text-update', data);
-    console.log('Text updated, DATA :', data);
-    
-    // Actualizar el prompt activo con el texto actual
-    if (data && data.text) {
-      if (!activePrompt) {
-        activePrompt = { content: data.text, isTemporary: true };
-      } else if (!activePrompt._id) { // Si es un prompt temporal
-        activePrompt.content = data.text;
-      }
-    }
+    const text = data.text || '';
+    socket.broadcast.emit('text-update', text);
+    console.log('Text updated:', text);
   });
   
   // Handle prompt selection from gallery
