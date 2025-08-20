@@ -46,6 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Variables para edición
     let currentEditingPrompt = null;
+    
+    // Obtener sesión del URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('sesion') || '1'; // default a sesión 1
 
     // Funciones del modal
     function openEditModal(prompt) {
@@ -87,10 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Obtener sesión del URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('sesion') || '1'; // default a sesión 1
-    
     // Connect to socket
     socket.on('connect', () => {
         connectionStatus.textContent = 'Conectado';
@@ -109,98 +109,66 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     socket.on('text-update', (data) => {
+        if (!data) return;
         if (data.session === sessionId && !isGalleryMode && data.text !== promptEditor.value) {
             promptEditor.value = data.text;
         }
     });
     
     socket.on('load-prompt', (data) => {
+        if (!data) return;
         if (data.session === sessionId && !isGalleryMode && data.text !== promptEditor.value) {
             promptEditor.value = data.text;
         }
     });
     
     socket.on('new-prompt', (data) => {
+        if (!data) return;
         if (data.session === sessionId) {
             loadPrompts();
         }
     });
     
     socket.on('gallery-mode', (data) => {
+        if (!data) return;
         if (data.session === sessionId) {
             setGalleryMode(data.isActive, data.promptIndex);
         }
     });
     
     socket.on('rotate-prompt', (data) => {
+        if (!data) return;
         if (isGalleryMode && data.session === sessionId && data.promptIndex !== currentPromptIndex) {
             currentPromptIndex = data.promptIndex;
             displayPrompt(currentPromptIndex);
         }
     });
     
-    // Modal functions
-    function openEditModal(prompt) {
-        currentEditingPrompt = prompt;
-        editPromptText.value = prompt.content;
-        editModal.style.display = 'block';
-    }
-
-    function closeEditModal() {
-        editModal.style.display = 'none';
-        currentEditingPrompt = null;
-        editPromptText.value = '';
-    }
-
-    // Save edited prompt
-    async function saveEditedPrompt() {
-        if (!currentEditingPrompt) return;
-
-        try {
-            const response = await fetch(`${API_URL}/prompts/${currentEditingPrompt._id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    content: editPromptText.value
-                })
-            });
-
-            if (response.ok) {
-                // Reload prompts to show updated content
-                loadPrompts();
-                closeEditModal();
-            } else {
-                console.error('Error al guardar el prompt');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    }
-
-    // Event listeners for modal
-    saveEditButton.addEventListener('click', saveEditedPrompt);
-    cancelEditButton.addEventListener('click', closeEditModal);
-
     // Event listeners
-    if (promptEditor) {
-        promptEditor.addEventListener('input', () => {
-            if (isGalleryMode) return; // Don't allow editing in gallery mode
-            
-            // Emit text update for every keystroke for real-time sync
-            socket.emit('text-update', {
-                text: promptEditor.value,
-                session: sessionId
+    function initializeEventListeners() {
+        if (promptEditor) {
+            promptEditor.addEventListener('input', () => {
+                if (isGalleryMode) return; // Don't allow editing in gallery mode
+                
+                // Emit text update for every keystroke for real-time sync
+                socket.emit('text-update', {
+                    text: promptEditor.value,
+                    session: sessionId
+                });
             });
-        });
+        }
+        
+        if (saveButton) saveButton.addEventListener('click', savePrompt);
+        if (prevButton) prevButton.addEventListener('click', showPreviousPrompt);
+        if (nextButton) nextButton.addEventListener('click', showNextPrompt);
+        if (galleryToggle) galleryToggle.addEventListener('click', toggleGalleryMode);
+        if (rotationTimeInput) rotationTimeInput.addEventListener('change', updateRotationTime);
+        
+        // Modal event listeners
+        if (saveEditButton) saveEditButton.addEventListener('click', saveEditedPrompt);
+        if (cancelEditButton) cancelEditButton.addEventListener('click', closeEditModal);
     }
-    
-    if (saveButton) saveButton.addEventListener('click', savePrompt);
-    if (loadButton) loadButton.addEventListener('click', loadSelectedPrompt);
-    if (prevButton) prevButton.addEventListener('click', showPreviousPrompt);
-    if (nextButton) nextButton.addEventListener('click', showNextPrompt);
-    if (galleryToggle) galleryToggle.addEventListener('click', toggleGalleryMode);
+
     function updateRotationTime(event) {
         rotationTime = parseInt(event.target.value) || 5;
         if (isGalleryMode) {
@@ -209,11 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (rotationTimeInput) rotationTimeInput.addEventListener('change', updateRotationTime);
-    
-    // Modal event listeners
-    if (saveEditButton) saveEditButton.addEventListener('click', saveEditedPrompt);
-    if (cancelEditButton) cancelEditButton.addEventListener('click', closeEditModal);
+    // Initialize event listeners
+    initializeEventListeners();
     
     // Functions
     async function loadPrompts() {
@@ -225,6 +190,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error loading prompts:', error);
+        }
+    }
+
+    async function savePromptEdit(promptId, newContent) {
+        try {
+            const response = await fetch(`${API_URL}/prompts/${promptId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: newContent
+                })
+            });
+
+            if (response.ok) {
+                loadPrompts();
+            } else {
+                console.error('Error al guardar el prompt');
+            }
+        } catch (error) {
+            console.error('Error:', error);
         }
     }
     
@@ -274,50 +261,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 promptElement.classList.add('active');
             }
             
-            // Crear contenedor para el prompt y botones
-            const promptContainer = document.createElement('div');
-            
-            // Crear texto del prompt
+            // Crear texto del prompt (editable)
             const promptText = document.createElement('span');
+            promptText.className = 'prompt-text';
+            promptText.contentEditable = true;
             promptText.textContent = prompt.content;
             
-            // Crear botón de editar
-            const editButton = document.createElement('button');
-            editButton.className = 'edit-button';
-            editButton.textContent = 'Editar';
-            editButton.onclick = (e) => {
-                e.stopPropagation();
-                openEditModal(prompt);
-            };
+            // Manejar edición inline
+            promptText.addEventListener('focus', () => {
+                promptElement.classList.add('editing');
+            });
             
-            // Crear botón de borrar
+            promptText.addEventListener('blur', () => {
+                promptElement.classList.remove('editing');
+                if (promptText.textContent !== prompt.content) {
+                    savePromptEdit(prompt._id, promptText.textContent);
+                }
+            });
+            
+            // Crear botón de borrar (X)
             const deleteButton = document.createElement('button');
             deleteButton.className = 'delete-button';
-            deleteButton.textContent = 'Eliminar';
+            deleteButton.innerHTML = '×';
             deleteButton.onclick = (e) => {
                 e.stopPropagation();
                 deletePrompt(prompt._id, index);
             };
             
             // Agregar elementos al contenedor
-            promptContainer.appendChild(promptText);
-            promptContainer.appendChild(editButton);
-            promptContainer.appendChild(deleteButton);
-            promptElement.appendChild(promptContainer);
+            promptElement.appendChild(promptText);
+            promptElement.appendChild(deleteButton);
+            
+            // Activar prompt al hacer click
+            promptElement.addEventListener('click', (e) => {
+                if (e.target === promptText) return; // No activar si está editando
+                selectPrompt(index);
+                loadSelectedPrompt();
+            });
             
             galleryContent.appendChild(promptElement);
         });
         
         updateCounter();
-        loadButton.disabled = currentPromptIndex === -1;
-        prevButton.disabled = currentPromptIndex <= 0;
-        nextButton.disabled = currentPromptIndex >= prompts.length - 1 || currentPromptIndex === -1;
+        if (prevButton) prevButton.disabled = currentPromptIndex <= 0;
+        if (nextButton) nextButton.disabled = currentPromptIndex >= prompts.length - 1 || currentPromptIndex === -1;
     }
     
     function selectPrompt(index) {
         currentPromptIndex = index;
         updateGallery();
-        loadButton.disabled = false;
     }
     
     function loadSelectedPrompt() {
@@ -334,8 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPromptIndex = currentPromptIndex <= 0 ? prompts.length - 1 : currentPromptIndex - 1;
             displayPrompt(currentPromptIndex);
             
-            // Notify other clients if sync mode is on
-            if (isSyncMode) {
+            // Notify other clients if in gallery mode
+            if (isGalleryMode) {
                 const currentPrompt = prompts[currentPromptIndex];
                 socket.emit('rotate-prompt', { 
                     promptIndex: currentPromptIndex,
@@ -353,8 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPromptIndex = (currentPromptIndex + 1) % prompts.length;
             displayPrompt(currentPromptIndex);
             
-            // Notify other clients if sync mode is on
-            if (isSyncMode) {
+            // Notify other clients if in gallery mode
+            if (isGalleryMode) {
                 const currentPrompt = prompts[currentPromptIndex];
                 socket.emit('rotate-prompt', { 
                     promptIndex: currentPromptIndex,
@@ -386,8 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isGalleryMode = isActive;
         
         // Update UI
-        galleryToggle.textContent = isGalleryMode ? 'ON' : 'OFF';
-        galleryToggle.classList.toggle('active', isGalleryMode);
+        updateGalleryModeUI();
         
         // Make text editor readonly in gallery mode
         promptEditor.readOnly = isGalleryMode;
@@ -422,6 +413,12 @@ document.addEventListener('DOMContentLoaded', () => {
             promptIndex: currentPromptIndex,
             session: sessionId
         });
+    }
+
+    // Update UI for gallery mode
+    function updateGalleryModeUI() {
+        galleryToggle.textContent = `GALLERY ${isGalleryMode ? 'ON' : 'OFF'}`;
+        galleryToggle.classList.toggle('active', isGalleryMode);
     }
 
     function startAutoRotation() {

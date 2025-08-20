@@ -1,3 +1,18 @@
+:root {
+    --background-color: #121212;
+    --primary-color: #d8bfd8;
+    --secondary-color: #98fb98;
+    --text-color: #e6e6fa;
+    --border-color: #404040;
+    --hover-color: #dda0dd;
+    --button-bg: #333333;
+    --dark-bg: #1a1a1a;
+    --darker-bg: #141414;
+    --success-color: #98fb98;
+    --highlight-color: #dda0dd;
+    --card-bg: rgba(18, 18, 18, 0.9);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -6,28 +21,30 @@
 }
 
 body {
-    background-color: #f5f5f5;
+    background-color: var(--background-color);
+    color: var(--text-color);
     padding: 20px;
 }
 
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    background-color: #fff;
+    background-color: var(--dark-bg);
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(255, 105, 180, 0.1);
 }
 
 h1 {
     text-align: center;
     margin-bottom: 30px;
-    color: #333;
+    color: var(--primary-color);
 }
 
 h2 {
     margin-bottom: 15px;
-    color: #444;
+    color: var(--secondary-color);
 }
 
 .main-section {
@@ -40,16 +57,19 @@ h2 {
     flex: 1;
     min-width: 300px;
     padding: 20px;
-    background-color: #f9f9f9;
+    background-color: var(--card-bg);
     border-radius: 5px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 1px 5px rgba(255, 105, 180, 0.1);
 }
 
 #prompt-editor {
     width: 100%;
     height: 300px;
     padding: 15px;
-    border: 1px solid #ddd;
+    color: var(--text-color);
+    background-color: var(--dark-bg);
+    border: 1px solid var(--border-color);
     border-radius: 5px;
     resize: none;
     font-size: 16px;
@@ -59,7 +79,7 @@ h2 {
 
 #prompt-editor:focus {
     outline: none;
-    border-color: #4a90e2;
+    border-color: var(--primary-color);
 }
 
 .button-group {
@@ -70,36 +90,69 @@ h2 {
 
 button {
     padding: 10px 15px;
-    background-color: #4a90e2;
-    color: white;
+    background-color: var(--button-bg);
+    color: var(--text-color);
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-size: 14px;
-    transition: background-color 0.3s;
+    transition: all 0.3s;
 }
 
 button:hover {
-    background-color: #3a7bc8;
+    background-color: var(--hover-color);
+    transform: translateY(-2px);
 }
 
 button:disabled {
-    background-color: #cccccc;
+    background-color: var(--dark-bg);
+    opacity: 0.5;
     cursor: not-allowed;
+    border: 1px solid var(--border-color);
+}
+
+#prev-button, #next-button {
+    background-color: var(--button-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    font-size: 18px;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#prev-button:hover, #next-button:hover {
+    background-color: var(--primary-color);
+    border-color: var(--highlight-color);
+    color: var(--darker-bg);
+    transform: scale(1.05);
+}
+
+#prev-button:disabled, #next-button:disabled {
+    background-color: var(--border-color);
+    border-color: var(--border-color);
+    cursor: not-allowed;
+    opacity: 0.5;
+    transform: none;
 }
 
 .connection-status {
     font-size: 14px;
-    color: #666;
+    color: var(--text-color);
 }
 
 #connection-status {
     font-weight: bold;
-    color: #e74c3c;
+    color: var(--secondary-color);
 }
 
 #connection-status.connected {
-    color: #2ecc71;
+    color: var(--primary-color);
 }
 
 .gallery-mode-controls {
@@ -118,15 +171,19 @@ button:disabled {
 }
 
 .toggle-button {
-    padding: 8px 15px;
+    padding: 12px 24px;
     border-radius: 20px;
-    background-color: #e74c3c;
-    color: white;
-    transition: background-color 0.3s;
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    transition: all 0.3s;
+    border: 1px solid var(--border-color);
+    font-size: 16px;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
 .toggle-button.active {
-    background-color: #2ecc71;
+    background-color: var(--primary-color);
 }
 
 .time-selector {
@@ -139,8 +196,10 @@ button:disabled {
 .time-selector input {
     width: 60px;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
+    background-color: var(--dark-bg);
+    color: var(--text-color);
 }
 
 .gallery-controls {
@@ -152,72 +211,52 @@ button:disabled {
 
 #gallery-counter {
     font-size: 14px;
-    color: #666;
+    color: var(--text-color);
 }
 
 #gallery-content {
     height: 200px;
     padding: 15px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 5px;
     overflow-y: auto;
     margin-bottom: 15px;
-    background-color: #fff;
+    background-color: var(--dark-bg);
 }
 
 .empty-gallery {
-    color: #999;
+    color: var(--text-color);
     text-align: center;
     margin-top: 80px;
+    opacity: 0.6;
 }
 
 .prompt-item {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.prompt-container {
+    background-color: var(--dark-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 10px;
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
-}
-
-.prompt-text {
-    flex-grow: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.delete-button {
-    background-color: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    margin-left: 10px;
     cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.delete-button:hover {
-    background-color: #c0392b;
+    transition: all 0.3s ease;
+    color: var(--text-color);
 }
 
 .prompt-item:hover {
-    background-color: #f0f7ff;
+    border-color: var(--highlight-color);
+    box-shadow: 0 0 10px rgba(221, 160, 221, 0.2);
 }
 
 .prompt-item.active {
-    background-color: #e6f2ff;
-    border-left: 3px solid #4a90e2;
+    border-color: var(--primary-color);
+    background-color: var(--darker-bg);
+    box-shadow: 0 0 15px rgba(216, 191, 216, 0.3);
+    border-left: 3px solid var(--highlight-color);
+    transform: translateX(5px);
 }
 
 .prompt-content {
@@ -229,7 +268,106 @@ button:disabled {
 
 .prompt-date {
     font-size: 12px;
-    color: #999;
+    color: var(--text-color);
+    opacity: 0.6;
+}
+
+.delete-button {
+    background-color: transparent;
+    color: #e74c3c;
+    border: none;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.delete-button:hover {
+    color: var(--secondary-color);
+}
+
+
+.prompt-content {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 5px;
+}
+
+.prompt-date {
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.6;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--dark-bg);
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 500px;
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    color: var(--text-color);
+}
+
+.modal-content textarea {
+    width: 100%;
+    height: 150px;
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--dark-bg);
+    color: var(--text-color);
+    resize: vertical;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--dark-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--button-bg);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
 }
 
 @media (max-width: 768px) {

@@ -35,14 +35,14 @@
                     </div>
                 </div>
                 <div class="gallery-controls">
-                    <button id="prev-button">Anterior</button>
+                    <button id="prev-button">←</button>
                     <span id="gallery-counter">0/0</span>
-                    <button id="next-button">Siguiente</button>
+                    <button id="next-button">→</button>
                 </div>
                 <div id="gallery-content" class="gallery-list">
                     <!-- Los prompts se cargarán aquí dinámicamente -->
                 </div>
-                <button id="load-button" disabled>Cargar Prompt Seleccionado</button>
+                <!-- Removed load button -->
             </div>
         </div>
     </div>
@@ -50,7 +50,7 @@
     <!-- Modal de edición -->
     <div id="edit-modal" class="modal">
         <div class="modal-content">
-            <h3>Editar Prompt</h3>
+            <h2>Editar Prompt</h2>
             <textarea id="edit-prompt-text"></textarea>
             <div class="modal-buttons">
                 <button id="save-edit">Guardar</button>
