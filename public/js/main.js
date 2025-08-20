@@ -109,14 +109,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     socket.on('text-update', (data) => {
-        if (!data) return;
+        if (!data || data.text === undefined || data.text === null) return;
         if (data.session === sessionId && !isGalleryMode && data.text !== promptEditor.value) {
             promptEditor.value = data.text;
         }
     });
     
     socket.on('load-prompt', (data) => {
-        if (!data) return;
+        if (!data || data.text === undefined || data.text === null) return;
         if (data.session === sessionId && !isGalleryMode && data.text !== promptEditor.value) {
             promptEditor.value = data.text;
         }
@@ -291,7 +291,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Activar prompt al hacer click
             promptElement.addEventListener('click', (e) => {
-                if (e.target === promptText) return; // No activar si está editando
+                if (e.target === promptText || e.target === deleteButton) return; // No activar si está editando o borrando
+                e.preventDefault();
+                e.stopPropagation();
                 selectPrompt(index);
                 loadSelectedPrompt();
             });
@@ -312,8 +314,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadSelectedPrompt() {
         if (currentPromptIndex >= 0 && currentPromptIndex < prompts.length) {
             const selectedPrompt = prompts[currentPromptIndex];
-            promptEditor.value = selectedPrompt.content;
-            socket.emit('select-prompt', { ...selectedPrompt, session: sessionId });
+            if (selectedPrompt && selectedPrompt.content !== undefined) {
+                promptEditor.value = selectedPrompt.content;
+                socket.emit('select-prompt', { ...selectedPrompt, session: sessionId });
+            }
         }
     }
     
