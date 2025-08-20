@@ -164,9 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (galleryToggle) galleryToggle.addEventListener('click', toggleGalleryMode);
         if (rotationTimeInput) rotationTimeInput.addEventListener('change', updateRotationTime);
         
-        // Modal event listeners
-        if (saveEditButton) saveEditButton.addEventListener('click', saveEditedPrompt);
-        if (cancelEditButton) cancelEditButton.addEventListener('click', closeEditModal);
     }
 
     function updateRotationTime(event) {
