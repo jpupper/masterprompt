@@ -67,7 +67,8 @@ app.post(`/${APP_PATH}/api/prompts`, async (req, res) => {
     });
     const newPrompt = await prompt.save();
     res.status(201).json(newPrompt);
-    io.emit('new-prompt', newPrompt);
+    // Emitir a todas las sesiones
+    io.emit('new-prompt', { ...newPrompt.toObject(), session: req.query.session || '1' });
     
     // Actualizar el prompt activo cuando se crea uno nuevo
     activePrompt = newPrompt;

@@ -16,7 +16,6 @@ APP_PATH = 'masterprompt'
 
 # Sesión a la que se conectará (por defecto 1)
 import sys
-SESSION_ID = sys.argv[1] if len(sys.argv) > 1 else '1'
 
 @sio.event
 def connect():
@@ -32,31 +31,29 @@ def on_new_prompt(data):
     print(f'ID: {data.get("_id")}')
     print(f'Contenido: {data.get("content")}')
     print(f'Fecha: {data.get("createdAt")}')
+    print(f'Sesión: {data.get("session")}')
     
-    # Enviar por OSC - mensaje y sesión combinados
-    osc_client.send_message("/mensaje", [data.get("content", ""), SESSION_ID])
+    # Enviar por OSC - mensaje y sesión
+    osc_client.send_message("/mensaje", [data.get("content", ""), data.get("session", "1")])
 
 @sio.on('text-update')
 def on_text_update(data):
     print('\n=== Actualización de Texto ===')
     print(data)
-    if data.get('session') == SESSION_ID:
-        osc_client.send_message("/mensaje", [data.get("text", ""), SESSION_ID])
+    osc_client.send_message("/mensaje", [data.get("text", ""), data.get("session", "1")])
 
 @sio.on('load-prompt')
 def on_load_prompt(data):
     print('\n=== Prompt Seleccionado ===')
     print(f'ID: {data.get("_id")}')
     print(f'Contenido: {data.get("content")}')
-    if data.get('session') == SESSION_ID:
-        osc_client.send_message("/mensaje", [data.get("content", ""), SESSION_ID])
+    osc_client.send_message("/mensaje", [data.get("content", ""), data.get("session", "1")])
 
 @sio.on('prompt-deleted')
 def on_prompt_deleted(data):
     print('\n=== Prompt Eliminado ===')
     print(f'ID: {data.get("id")}')
-    if data.get('session') == SESSION_ID:
-        osc_client.send_message("/mensaje", ["", SESSION_ID])
+    osc_client.send_message("/mensaje", ["", data.get("session", "1")])
 
 @sio.on('rotate-prompt')
 def on_rotate_prompt(data):
@@ -64,8 +61,7 @@ def on_rotate_prompt(data):
     print(f'Índice: {data.get("promptIndex")}')
     print(f'Texto: {data.get("promptText")}')
     print(f'Sesión: {data.get("session")}')
-    if data.get('session') == SESSION_ID:
-        osc_client.send_message("/mensaje", [data.get("promptText", ""), SESSION_ID])
+    osc_client.send_message("/mensaje", [data.get("promptText", ""), data.get("session", "1")])
 
 def main():
     try:
