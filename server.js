@@ -86,6 +86,28 @@ app.get(`/${APP_PATH}/api/prompts/:id`, async (req, res) => {
   }
 });
 
+// Endpoint para editar un prompt
+app.put(`/${APP_PATH}/api/prompts/:id`, async (req, res) => {
+  try {
+    const prompt = await Prompt.findByIdAndUpdate(
+      req.params.id,
+      { content: req.body.content },
+      { new: true }
+    );
+    
+    if (!prompt) {
+      return res.status(404).json({ message: 'Prompt not found' });
+    }
+
+    // Notificar a todos los clientes que el prompt fue actualizado
+    io.emit('new-prompt');
+    res.json(prompt);
+  } catch (error) {
+    console.error('Error editing prompt:', error);
+    res.status(500).json({ message: 'Error editing prompt' });
+  }
+});
+
 // Nueva API para obtener el prompt activo
 app.get(`/${APP_PATH}/api/active-prompt`, (req, res) => {
   if (activePrompt) {
@@ -137,8 +159,10 @@ io.on('connection', (socket) => {
   
   // Handle text synchronization - real-time for every keystroke
   socket.on('text-update', (data) => {
+    const session = data.session || '1';
+    // Solo emitir a los clientes en la misma sesión
     socket.broadcast.emit('text-update', data);
-    console.log('Text updated:', data);
+    console.log('Text updated:', data, 'Session:', session);
   });
   
   // Handle prompt selection from gallery
@@ -154,14 +178,17 @@ io.on('connection', (socket) => {
 
   // Handle gallery mode toggle
   socket.on('gallery-mode', (data) => {
+    const session = data.session || '1';
+    // Solo emitir a los clientes en la misma sesión
     socket.broadcast.emit('gallery-mode', data);
-    console.log('Gallery mode changed:', data.isActive ? 'ON' : 'OFF');
+    console.log('Gallery mode changed:', data.isActive ? 'ON' : 'OFF', 'Session:', session);
   });
   
   // Handle prompt rotation in gallery mode
   socket.on('rotate-prompt', (data) => {
-    socket.broadcast.emit('rotate-prompt', data);
-    console.log('Rotating to prompt index:', data.promptIndex);
+    const session = data.session || '1';
+    socket.broadcast.emit('rotate-prompt', { ...data, session });
+    console.log('Rotating to prompt index:', data.promptIndex, 'Session:', session);
     console.log('TEXT:', data);
     
     // Actualizar el prompt activo cuando se rota a uno nuevo

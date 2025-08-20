@@ -9,8 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const galleryCounter = document.getElementById('gallery-counter');
     const connectionStatus = document.getElementById('connection-status');
     const galleryToggle = document.getElementById('gallery-toggle');
-    const syncToggle = document.getElementById('sync-toggle');
     const rotationTimeInput = document.getElementById('rotation-time');
+    
+    // Modal elements
+    const editModal = document.getElementById('edit-modal');
+    const editPromptText = document.getElementById('edit-prompt-text');
+    const saveEditButton = document.getElementById('save-edit');
+    const cancelEditButton = document.getElementById('cancel-edit');
     
     // Get APP_PATH from config
     const APP_PATH = 'masterprompt';
@@ -27,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
         connectionStatus.classList.remove('connected');
     });
     
+    // API URL configuration
+    const API_URL = `/${APP_PATH}/api`;
+
     // Variables
     let prompts = [];
     let currentPromptIndex = -1;
@@ -34,8 +42,54 @@ document.addEventListener('DOMContentLoaded', () => {
     let typingTimer;
     let rotationTimer;
     let isGalleryMode = false;
-    let isSyncMode = true; // Por defecto, la sincronización está activada
     let rotationTime = parseInt(rotationTimeInput.value) || 5; // seconds
+
+    // Variables para edición
+    let currentEditingPrompt = null;
+
+    // Funciones del modal
+    function openEditModal(prompt) {
+        if (!editModal || !editPromptText) return;
+        currentEditingPrompt = prompt;
+        editPromptText.value = prompt.content;
+        editModal.style.display = 'block';
+    }
+
+    function closeEditModal() {
+        if (!editModal || !editPromptText) return;
+        editModal.style.display = 'none';
+        currentEditingPrompt = null;
+        editPromptText.value = '';
+    }
+
+    async function saveEditedPrompt() {
+        if (!currentEditingPrompt || !editPromptText) return;
+
+        try {
+            const response = await fetch(`${API_URL}/prompts/${currentEditingPrompt._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: editPromptText.value
+                })
+            });
+
+            if (response.ok) {
+                loadPrompts();
+                closeEditModal();
+            } else {
+                console.error('Error al guardar el prompt');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+    
+    // Obtener sesión del URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('sesion') || '1'; // default a sesión 1
     
     // Connect to socket
     socket.on('connect', () => {
@@ -55,61 +109,122 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     socket.on('text-update', (data) => {
-        if (!isGalleryMode && data.text !== promptEditor.value) {
+        if (data.session === sessionId && !isGalleryMode && data.text !== promptEditor.value) {
             promptEditor.value = data.text;
         }
     });
     
     socket.on('load-prompt', (data) => {
-        if (!isGalleryMode && data.text !== promptEditor.value) {
+        if (data.session === sessionId && !isGalleryMode && data.text !== promptEditor.value) {
             promptEditor.value = data.text;
         }
     });
     
-    socket.on('new-prompt', () => {
-        loadPrompts();
+    socket.on('new-prompt', (data) => {
+        if (data.session === sessionId) {
+            loadPrompts();
+        }
     });
     
     socket.on('gallery-mode', (data) => {
-        setGalleryMode(data.isActive, data.promptIndex);
+        if (data.session === sessionId) {
+            setGalleryMode(data.isActive, data.promptIndex);
+        }
     });
     
     socket.on('rotate-prompt', (data) => {
-        if (isGalleryMode && isSyncMode && data.promptIndex !== currentPromptIndex) {
+        if (isGalleryMode && data.session === sessionId && data.promptIndex !== currentPromptIndex) {
             currentPromptIndex = data.promptIndex;
             displayPrompt(currentPromptIndex);
         }
     });
     
+    // Modal functions
+    function openEditModal(prompt) {
+        currentEditingPrompt = prompt;
+        editPromptText.value = prompt.content;
+        editModal.style.display = 'block';
+    }
+
+    function closeEditModal() {
+        editModal.style.display = 'none';
+        currentEditingPrompt = null;
+        editPromptText.value = '';
+    }
+
+    // Save edited prompt
+    async function saveEditedPrompt() {
+        if (!currentEditingPrompt) return;
+
+        try {
+            const response = await fetch(`${API_URL}/prompts/${currentEditingPrompt._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: editPromptText.value
+                })
+            });
+
+            if (response.ok) {
+                // Reload prompts to show updated content
+                loadPrompts();
+                closeEditModal();
+            } else {
+                console.error('Error al guardar el prompt');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    // Event listeners for modal
+    saveEditButton.addEventListener('click', saveEditedPrompt);
+    cancelEditButton.addEventListener('click', closeEditModal);
+
     // Event listeners
-    promptEditor.addEventListener('input', () => {
-        if (isGalleryMode) return; // Don't allow editing in gallery mode
-        
-        // Emit text update for every keystroke for real-time sync
-        socket.emit('text-update', promptEditor.value);
-    });
+    if (promptEditor) {
+        promptEditor.addEventListener('input', () => {
+            if (isGalleryMode) return; // Don't allow editing in gallery mode
+            
+            // Emit text update for every keystroke for real-time sync
+            socket.emit('text-update', {
+                text: promptEditor.value,
+                session: sessionId
+            });
+        });
+    }
     
-    saveButton.addEventListener('click', savePrompt);
-    loadButton.addEventListener('click', loadSelectedPrompt);
-    prevButton.addEventListener('click', showPreviousPrompt);
-    nextButton.addEventListener('click', showNextPrompt);
-    galleryToggle.addEventListener('click', toggleGalleryMode);
-    syncToggle.addEventListener('click', toggleSyncMode);
-    rotationTimeInput.addEventListener('change', updateRotationTime);
+    if (saveButton) saveButton.addEventListener('click', savePrompt);
+    if (loadButton) loadButton.addEventListener('click', loadSelectedPrompt);
+    if (prevButton) prevButton.addEventListener('click', showPreviousPrompt);
+    if (nextButton) nextButton.addEventListener('click', showNextPrompt);
+    if (galleryToggle) galleryToggle.addEventListener('click', toggleGalleryMode);
+    function updateRotationTime(event) {
+        rotationTime = parseInt(event.target.value) || 5;
+        if (isGalleryMode) {
+            stopAutoRotation();
+            startAutoRotation();
+        }
+    }
+
+    if (rotationTimeInput) rotationTimeInput.addEventListener('change', updateRotationTime);
+    
+    // Modal event listeners
+    if (saveEditButton) saveEditButton.addEventListener('click', saveEditedPrompt);
+    if (cancelEditButton) cancelEditButton.addEventListener('click', closeEditModal);
     
     // Functions
     async function loadPrompts() {
         try {
-            const response = await fetch(`/${APP_PATH}/api/prompts`);
-            if (!response.ok) {
-                throw new Error('Failed to load prompts');
-            }
-            
+            const response = await fetch(`${API_URL}/prompts`);
             prompts = await response.json();
-            updateGallery();
+            if (galleryContent) {
+                updateGallery();
+            }
         } catch (error) {
             console.error('Error loading prompts:', error);
-            galleryContent.innerHTML = '<p class="empty-gallery">Error al cargar los prompts</p>';
         }
     }
     
@@ -121,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const response = await fetch(`/${APP_PATH}/api/prompts`, {
+            const response = await fetch(`${API_URL}/prompts`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -149,10 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateGallery() {
-        if (prompts.length === 0) {
-            galleryContent.innerHTML = '<p class="empty-gallery">No hay prompts guardados</p>';
-            return;
-        }
+        if (!galleryContent) return;
         galleryContent.innerHTML = '';
         
         prompts.forEach((prompt, index) => {
@@ -162,41 +274,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 promptElement.classList.add('active');
             }
             
-            // Crear contenedor para el prompt y botón de borrar
+            // Crear contenedor para el prompt y botones
             const promptContainer = document.createElement('div');
-            promptContainer.className = 'prompt-container';
             
-            // Truncate text for display
-            const truncatedText = prompt.content.length > 50 ? 
-                prompt.content.substring(0, 50) + '...' : 
-                prompt.content;
+            // Crear texto del prompt
+            const promptText = document.createElement('span');
+            promptText.textContent = prompt.content;
             
-            // Texto del prompt
-            const promptText = document.createElement('div');
-            promptText.className = 'prompt-text';
-            promptText.textContent = truncatedText;
-            promptText.dataset.index = index;
+            // Crear botón de editar
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-button';
+            editButton.textContent = 'Editar';
+            editButton.onclick = (e) => {
+                e.stopPropagation();
+                openEditModal(prompt);
+            };
             
-            promptText.addEventListener('click', () => {
-                currentPromptIndex = index;
-                displayPrompt(currentPromptIndex);
-                loadSelectedPrompt();
-            });
-            
-            // Botón de borrar
+            // Crear botón de borrar
             const deleteButton = document.createElement('button');
             deleteButton.className = 'delete-button';
-            deleteButton.textContent = 'X';
-            deleteButton.dataset.id = prompt._id;
-            
-            // Evento para borrar sin confirmación
-            deleteButton.addEventListener('click', (e) => {
-                e.stopPropagation(); // Evitar que se active el click del prompt
+            deleteButton.textContent = 'Eliminar';
+            deleteButton.onclick = (e) => {
+                e.stopPropagation();
                 deletePrompt(prompt._id, index);
-            });
+            };
             
             // Agregar elementos al contenedor
             promptContainer.appendChild(promptText);
+            promptContainer.appendChild(editButton);
             promptContainer.appendChild(deleteButton);
             promptElement.appendChild(promptContainer);
             
@@ -219,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentPromptIndex >= 0 && currentPromptIndex < prompts.length) {
             const selectedPrompt = prompts[currentPromptIndex];
             promptEditor.value = selectedPrompt.content;
-            socket.emit('select-prompt', selectedPrompt);
+            socket.emit('select-prompt', { ...selectedPrompt, session: sessionId });
         }
     }
     
@@ -235,7 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 socket.emit('rotate-prompt', { 
                     promptIndex: currentPromptIndex,
                     promptText: currentPrompt.content,
-                    promptId: currentPrompt._id
+                    promptId: currentPrompt._id,
+                    session: sessionId
                 });
             }
         }
@@ -253,7 +359,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 socket.emit('rotate-prompt', { 
                     promptIndex: currentPromptIndex,
                     promptText: currentPrompt.content,
-                    promptId: currentPrompt._id
+                    promptId: currentPrompt._id,
+                    session: sessionId
                 });
             }
         }
@@ -309,36 +416,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function toggleGalleryMode() {
         setGalleryMode(!isGalleryMode, currentPromptIndex);
         
-        // Notify other clients
-        if (isSyncMode) {
-            socket.emit('gallery-mode', { isActive: isGalleryMode, promptIndex: currentPromptIndex });
-        }
+        // Notificar a otros clientes en la misma sesión
+        socket.emit('gallery-mode', { 
+            isActive: isGalleryMode, 
+            promptIndex: currentPromptIndex,
+            session: sessionId
+        });
     }
-    
-    // Sync mode function
-    function toggleSyncMode() {
-        isSyncMode = !isSyncMode;
-        
-        // Update UI
-        syncToggle.textContent = isSyncMode ? 'ON' : 'OFF';
-        syncToggle.classList.toggle('active', isSyncMode);
-        
-        // If we're in gallery mode and sync was just turned on, notify others of our current position
-        if (isGalleryMode && isSyncMode && currentPromptIndex >= 0) {
-            socket.emit('rotate-prompt', { promptIndex: currentPromptIndex });
-        }
-    }
-    
-    function updateRotationTime() {
-        rotationTime = parseInt(rotationTimeInput.value) || 5;
-        
-        // Restart rotation if gallery mode is active
-        if (isGalleryMode) {
-            stopAutoRotation();
-            startAutoRotation();
-        }
-    }
-    
+
     function startAutoRotation() {
         // Clear any existing timer
         stopAutoRotation();
@@ -350,15 +435,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentPromptIndex = (currentPromptIndex + 1) % prompts.length;
                 displayPrompt(currentPromptIndex);
                 
-                // Notify other clients only if sync mode is on
-                if (isSyncMode) {
-                    const currentPrompt = prompts[currentPromptIndex];
-                    socket.emit('rotate-prompt', { 
-                        promptIndex: currentPromptIndex,
-                        promptText: currentPrompt.content,
-                        promptId: currentPrompt._id
-                    });
-                }
+                // Notify others in same session
+                socket.emit('rotate-prompt', {
+                    promptIndex: currentPromptIndex,
+                    promptText: prompts[currentPromptIndex].content,
+                    promptId: prompts[currentPromptIndex]._id,
+                    session: sessionId
+                });
             }
         }, rotationTime * 1000);
     }

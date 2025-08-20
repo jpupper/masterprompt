@@ -29,10 +29,6 @@
                         <label for="gallery-toggle">Gallery Mode:</label>
                         <button id="gallery-toggle" class="toggle-button">OFF</button>
                     </div>
-                    <div class="toggle-container">
-                        <label for="sync-toggle">Sync Mode:</label>
-                        <button id="sync-toggle" class="toggle-button">ON</button>
-                    </div>
                     <div class="time-selector">
                         <label for="rotation-time">Tiempo de rotación (segundos):</label>
                         <input type="number" id="rotation-time" min="1" max="60" value="5">
@@ -43,10 +39,22 @@
                     <span id="gallery-counter">0/0</span>
                     <button id="next-button">Siguiente</button>
                 </div>
-                <div id="gallery-content">
-                    <p class="empty-gallery">No hay prompts guardados</p>
+                <div id="gallery-content" class="gallery-list">
+                    <!-- Los prompts se cargarán aquí dinámicamente -->
                 </div>
                 <button id="load-button" disabled>Cargar Prompt Seleccionado</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de edición -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h3>Editar Prompt</h3>
+            <textarea id="edit-prompt-text"></textarea>
+            <div class="modal-buttons">
+                <button id="save-edit">Guardar</button>
+                <button id="cancel-edit">Cancelar</button>
             </div>
         </div>
     </div>
