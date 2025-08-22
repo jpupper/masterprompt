@@ -63,6 +63,14 @@ def on_rotate_prompt(data):
     print(f'Sesión: {data.get("session")}')
     osc_client.send_message("/mensaje", [data.get("promptText", ""), data.get("session", "1")])
 
+@sio.on('st-slider-update')
+def on_st_slider_update(data):
+    print('\n=== Actualización Slider ST ===')
+    print(f'Valor: {data.get("value")}')
+    print(f'Sesión: {data.get("session")}')
+    # Enviar el valor del slider y la sesión por OSC
+    osc_client.send_message("/st", [data.get("value", 0), data.get("session", "1")])
+
 def main():
     try:
         # Conectar al servidor con la ruta correcta de Socket.IO

@@ -219,6 +219,14 @@ io.on('connection', (socket) => {
       };
     }
   });
+  
+  // Manejar actualizaciones del slider ST
+  socket.on('st-slider-update', (data) => {
+    const session = data.session || '1';
+    // Emitir a todos los clientes excepto al que envió el evento
+    socket.broadcast.emit('st-slider-update', { ...data, session });
+    console.log('ST Slider update:', data.value, 'Session:', session);
+  });
 
   // Manejar la desconexión del cliente
   socket.on('disconnect', () => {

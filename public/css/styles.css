@@ -82,6 +82,58 @@ h2 {
     border-color: var(--primary-color);
 }
 
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 5px 0;
+}
+
+.slider-container label {
+    color: var(--secondary-color);
+    font-weight: bold;
+    min-width: 30px;
+}
+
+.slider-container input[type="range"] {
+    flex-grow: 1;
+    height: 5px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border-color);
+    border-radius: 5px;
+    outline: none;
+    transition: all 0.3s;
+}
+
+.slider-container input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.slider-container input[type="range"]::-webkit-slider-thumb:hover {
+    background: var(--highlight-color);
+    transform: scale(1.2);
+}
+
+.slider-container input[type="range"]:focus {
+    background: var(--border-color);
+}
+
+.slider-container span {
+    min-width: 40px;
+    text-align: right;
+    color: var(--text-color);
+    font-family: monospace;
+}
+
 .button-group {
     display: flex;
     justify-content: space-between;

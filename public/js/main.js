@@ -10,6 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const connectionStatus = document.getElementById('connection-status');
     const galleryToggle = document.getElementById('gallery-toggle');
     const rotationTimeInput = document.getElementById('rotation-time');
+    const stSlider = document.getElementById('st-slider');
+    const stValue = document.getElementById('st-value');
+    
+    // Generar un ID único para este cliente
+    const clientId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    // Variable para controlar si esta instancia es la líder para la rotación
+    let isGalleryLeader = false;
     
     // Modal elements
     const editModal = document.getElementById('edit-modal');
@@ -43,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let rotationTimer;
     let isGalleryMode = false;
     let rotationTime = parseInt(rotationTimeInput.value) || 5; // seconds
+    let stSliderValue = 0; // Valor inicial del slider ST
+    let isUpdatingSlider = false; // Flag para evitar bucles infinitos en la actualización del slider
 
     // Variables para edición
     let currentEditingPrompt = null;
@@ -131,16 +141,40 @@ document.addEventListener('DOMContentLoaded', () => {
     
     socket.on('gallery-mode', (data) => {
         if (!data) return;
-        if (data.session === sessionId) {
-            setGalleryMode(data.isActive, data.promptIndex);
+        if (data.session === sessionId && data.clientId !== clientId) {
+            // Si otro cliente se convierte en líder, nosotros dejamos de serlo
+            if (data.isLeader && isGalleryLeader) {
+                isGalleryLeader = false;
+                stopAutoRotation(); // Detenemos nuestra rotación si éramos líder antes
+            }
+            
+            // Actualizamos nuestro estado de galería
+            setGalleryMode(data.isActive, data.promptIndex, data.clientId);
         }
     });
     
     socket.on('rotate-prompt', (data) => {
         if (!data) return;
-        if (isGalleryMode && data.session === sessionId && data.promptIndex !== currentPromptIndex) {
-            currentPromptIndex = data.promptIndex;
-            displayPrompt(currentPromptIndex);
+        // Solo procesar si el mensaje no fue originado por este cliente
+        if (isGalleryMode && data.session === sessionId && data.sourceClientId !== clientId) {
+            // Si el mensaje viene del líder, siempre lo procesamos
+            if (data.fromLeader || !isGalleryLeader) {
+                currentPromptIndex = data.promptIndex;
+                displayPrompt(currentPromptIndex);
+            }
+        }
+    });
+    
+    // Evento para sincronizar el valor del slider ST
+    socket.on('st-slider-update', (data) => {
+        if (!data) return;
+        // Solo procesar si el mensaje es de la misma sesión y no fue originado por este cliente
+        if (data.session === sessionId && data.sourceClientId !== clientId) {
+            isUpdatingSlider = true;
+            stSlider.value = data.value;
+            stValue.textContent = parseFloat(data.value).toFixed(2);
+            stSliderValue = parseFloat(data.value);
+            isUpdatingSlider = false;
         }
     });
     
@@ -164,6 +198,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (galleryToggle) galleryToggle.addEventListener('click', toggleGalleryMode);
         if (rotationTimeInput) rotationTimeInput.addEventListener('change', updateRotationTime);
         
+        // Event listener para el slider ST
+        if (stSlider) {
+            stSlider.addEventListener('input', updateSTSliderValue);
+        }
+    }
+    
+    // Función para actualizar y emitir el valor del slider mientras se arrastra
+    function updateSTSliderValue() {
+        if (isUpdatingSlider) return;
+        const value = parseFloat(stSlider.value);
+        stSliderValue = value;
+        stValue.textContent = value.toFixed(2);
+        
+        // Emitir el valor del slider a través de sockets en tiempo real
+        socket.emit('st-slider-update', {
+            value: stSliderValue,
+            session: sessionId,
+            sourceClientId: clientId
+        });
     }
 
     function updateRotationTime(event) {
@@ -334,7 +387,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptIndex: currentPromptIndex,
                     promptText: currentPrompt.content,
                     promptId: currentPrompt._id,
-                    session: sessionId
+                    session: sessionId,
+                    sourceClientId: clientId // Añadir el ID del cliente que origina el cambio
                 });
             }
         }
@@ -353,7 +407,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptIndex: currentPromptIndex,
                     promptText: currentPrompt.content,
                     promptId: currentPrompt._id,
-                    session: sessionId
+                    session: sessionId,
+                    sourceClientId: clientId // Añadir el ID del cliente que origina el cambio
                 });
             }
         }
@@ -375,8 +430,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Gallery mode functions
-    function setGalleryMode(isActive, promptIdx) {
+    function setGalleryMode(isActive, promptIdx, leaderClientId) {
         isGalleryMode = isActive;
+        
+        // Si recibimos un ID de cliente líder, actualizamos nuestro estado
+        if (leaderClientId) {
+            isGalleryLeader = (leaderClientId === clientId);
+        }
         
         // Update UI
         updateGalleryModeUI();
@@ -391,12 +451,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (isGalleryMode) {
-            // Start auto-rotation if we have prompts
+            // Start auto-rotation if we have prompts and somos líder
             if (prompts.length > 0) {
                 if (currentPromptIndex === -1) {
                     currentPromptIndex = 0;
                 }
-                startAutoRotation();
+                
+                // Solo el líder inicia la rotación automática
+                if (isGalleryLeader) {
+                    console.log('Esta instancia es líder, iniciando rotación automática');
+                    startAutoRotation();
+                } else {
+                    console.log('Esta instancia NO es líder, esperando actualizaciones');
+                }
             }
         } else {
             // Stop auto-rotation
@@ -406,13 +473,30 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Toggle gallery mode function
     function toggleGalleryMode() {
+        // Si estamos activando el modo galería, intentamos convertirnos en líder
+        if (!isGalleryMode) {
+            isGalleryLeader = true; // Esta instancia será la líder
+        } else {
+            // Si estamos desactivando y éramos líder, notificamos que ya no hay líder
+            if (isGalleryLeader) {
+                socket.emit('gallery-leader', {
+                    isLeader: false,
+                    session: sessionId,
+                    clientId: clientId
+                });
+                isGalleryLeader = false;
+            }
+        }
+        
         setGalleryMode(!isGalleryMode, currentPromptIndex);
         
         // Notificar a otros clientes en la misma sesión
         socket.emit('gallery-mode', { 
             isActive: isGalleryMode, 
             promptIndex: currentPromptIndex,
-            session: sessionId
+            session: sessionId,
+            isLeader: isGalleryLeader,
+            clientId: clientId
         });
     }
 
@@ -423,8 +507,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startAutoRotation() {
+        // Solo iniciar la rotación si somos el líder
+        if (!isGalleryLeader) {
+            console.log('No somos líder, no iniciamos rotación automática');
+            return;
+        }
+        
         // Clear any existing timer
         stopAutoRotation();
+        
+        console.log('Iniciando rotación automática como líder');
         
         // Start new timer
         rotationTimer = setInterval(() => {
@@ -438,7 +530,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptIndex: currentPromptIndex,
                     promptText: prompts[currentPromptIndex].content,
                     promptId: prompts[currentPromptIndex]._id,
-                    session: sessionId
+                    session: sessionId,
+                    sourceClientId: clientId,
+                    fromLeader: true // Indicar que este mensaje viene del líder
                 });
             }
         }, rotationTime * 1000);
