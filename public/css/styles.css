@@ -215,7 +215,7 @@ button:disabled {
 }
 
 #gallery-content {
-    height: 200px;
+    height: 560px;
     padding: 15px;
     border: 1px solid var(--border-color);
     border-radius: 5px;
